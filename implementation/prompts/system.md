@@ -94,6 +94,14 @@ sparse incident data, no stated business tolerance): name those gaps up
 front in the paper. The customer needs to know the foundation is thin
 before they read the SLO-by-SLO evaluation.
 
+If the nobl9_catalog_lookup tool is available, call it when Nobl9 is
+mentioned, when the user asks about overlap or already-deployed SLOs, or
+when a proposal looks like it might duplicate an existing portfolio.
+Treat catalog hits as facts: duplicates belong in Excess or as a sign-off
+condition; existing targets and live reliability can ground (or refute)
+Target Validity. Catalog facts do not override symptoms-over-causes. If
+the tool errors, proceed without catalog and say so once.
+
 ================================================================
 SECTION 4 — THE FOUR TESTS (APPLY TO EVERY PROPOSED SLO)
 ================================================================
@@ -299,3 +307,5 @@ Before you produce the paper, verify:
   [ ] Total length under 1500 words
   [ ] No emojis, no filler, no hedging
   [ ] Brief constructive praise included where something genuinely earns it
+  [ ] If Nobl9 catalog was queried, overlap is named in Excess or sign-off
+      conditions (or the paper states catalog was unavailable)

@@ -24,6 +24,7 @@ The only reason to stay in Agent Studio is if operators explicitly want admin GU
 ```
 implementation/
 ├── agent.py                    # ADK agent definition
+├── nobl9_client.py             # Read-only Nobl9 REST client
 ├── requirements.txt
 ├── prompts/
 │   ├── system.md               # Master system prompt (from 02-master-system-prompt.md)
@@ -35,6 +36,8 @@ implementation/
 │   │   └── SKILL.md
 │   └── sre-principles-citation/
 │       └── SKILL.md
+├── tests/
+│   └── test_nobl9_client.py    # Mocked catalog client + tool registration
 └── evals/
     └── evals.json              # Golden eval set
 ```
@@ -132,18 +135,23 @@ GOOGLE_CLOUD_PROJECT=your-project-id
 GOOGLE_CLOUD_REGION=us-central1
 SLO_REVIEW_DOCS_DATASTORE=slo-review-docs
 SLO_REVIEW_SRE_CORPUS_DATASTORE=slo-review-sre-corpus
-DEPLOYMENT_TIER=standard                       # or "enterprise" to register the Nobl9 stub
 DEPLOYMENT_VERTICAL=horizontal                 # or gxp / fedramp / pci
-NOBL9_API_KEY=                                 # only if you wire the Nobl9 tool
+
+# Optional — registers nobl9_catalog_lookup when both credentials are set
+NOBL9_CLIENT_ID=
+NOBL9_CLIENT_SECRET=
+NOBL9_ORGANIZATION=
+NOBL9_URL=https://app.nobl9.com                 # EU: https://app.nobl9.eu
+NOBL9_PROJECT=                                 # default project if the tool call omits one
 ```
 
-For production, use Secret Manager instead of `.env`:
+`nobl9_catalog_lookup` is registered only when `NOBL9_CLIENT_ID` and `NOBL9_CLIENT_SECRET` are set. There is no `DEPLOYMENT_TIER` gate. The client POSTs `/api/accessToken` with Basic auth, caches the JWT for about an hour (refresh 60s early), and respects Nobl9's 1 token request / 3 seconds limit. It then GETs Objects API SLO manifests and, best-effort, joins Status API v2 remaining budget / reliability. Store the client secret in Secret Manager — never in git:
 
 ```bash
-gcloud secrets create nobl9-api-key --data-file=- < your-key.txt
+gcloud secrets create nobl9-client-secret --data-file=- < your-client-secret.txt
 ```
 
-And reference it in the agent's runtime configuration when deployed.
+Reference that secret in the agent's runtime configuration when deployed. The agent never applies or generates Nobl9 YAML.
 
 ---
 
@@ -164,8 +172,9 @@ The agent should:
 
 1. Call `ingest_documents` with the GCS prefix
 2. Read both docs
-3. Optionally call `search_sre_corpus` if it needs grounding
-4. Return a Markdown review paper + structured ReviewVerdict
+3. Optionally call `nobl9_catalog_lookup` when Nobl9 / overlap is in play
+4. Optionally call `search_sre_corpus` if it needs grounding
+5. Return a Markdown review paper + structured ReviewVerdict
 
 Inspect the tool-call trace in the UI. If the agent skipped `ingest_documents` or invented document content, the system prompt isn't loaded correctly — check `prompts/system.md` and the `_build_system_instruction()` function.
 
@@ -333,6 +342,8 @@ Why pin: principal-SRE judgment style is a deliverable. If you change it, review
 | `SkillToolset` import fails | You're on an older ADK. Upgrade: `pip install -U google-adk` — Skills landed in 1.4.0 |
 | `output_schema` not respected | Gemini sometimes ignores schemas with deeply nested optional fields. Flatten the schema or use post-processing validation. |
 | Agent calls `search_sre_corpus` on every review | Tool description is too permissive. Tighten to "use ONLY when grounding a critique requires citing source" |
+| `nobl9_catalog_lookup` missing from tools | Set `NOBL9_CLIENT_ID` and `NOBL9_CLIENT_SECRET`. Restart the process after changing env. |
+| Nobl9 429 on `/api/accessToken` | Reuse the cached JWT (1 hour). Do not mint a token per tool call. |
 | Cost is 3x expected | Check whether structured output is being requested every turn. Set `output_schema` to None for follow-up turns where the verdict is already rendered. |
 | Docs aren't ingesting into the datastore | Check the GCS bucket region matches the datastore region, and the agent's service account has `roles/storage.objectViewer` on the bucket |
 

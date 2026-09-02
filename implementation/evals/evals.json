@@ -2,10 +2,10 @@
   "_metadata": {
     "description": "Golden eval set for the SLO Review Board Agent. Each case is a known-input → known-correct-verdict pair. Cases are compact on purpose (real docs are longer); the verdict-determining signal must be present, not every operational detail. All services are fictional.",
     "version": "1.0.0",
-    "case_count": 6,
+    "case_count": 7,
     "verdict_distribution": {
       "Approved": 1,
-      "Approved with Revisions": 3,
+      "Approved with Revisions": 4,
       "Rejected": 2
     }
   },
@@ -96,6 +96,43 @@
         "convention"
       ],
       "prohibited_findings": []
+    },
+    {
+      "id": "case-07-overlap-existing-nobl9-slo",
+      "description": "Proposed checkout-success SLO already exists in the Nobl9 catalog. Until the eval runner can inject tool results, this case documents expected overlap language; unit tests assert the compact payload contains checkout-success.",
+      "discovery": "Service: checkout-service. Owner: Payments Platform team. Consumers: ~50M monthly active users via web and mobile apps. User journey: user clicks checkout, fills payment, receives confirmation. Hard dependencies: Stripe API (99.99% per Stripe SLA), internal user-service (99.95% measured). Observability: Datadog. Nobl9 project: payments. The team already operates production SLOs in Nobl9 for this service.",
+      "implementation_guide": "Three proposed SLOs to deploy in Nobl9:\n1. checkout-success — SLI: HTTP 2xx on POST /checkout / total POST /checkout. Target: 99.9% over 28 days. Basis: matches public SLA.\n2. Checkout latency — SLI: P95 latency on POST /checkout. Target: 95% of requests < 3s over 28 days. Basis: observed P95 over last 90 days has been 2.4s.\n3. Payment confirmation latency — SLI: P95 time from checkout submit to confirmation email sent. Target: 95% < 60s over 28 days. Basis: NPS drops when confirmations exceed 60s.",
+      "golden_verdict": "Approved with Revisions",
+      "required_findings": [
+        "overlap",
+        "already",
+        "checkout-success",
+        "Nobl9"
+      ],
+      "prohibited_findings": [
+        "deploy as written"
+      ],
+      "catalog_fixture": {
+        "service_name": "checkout-service",
+        "project": "payments",
+        "existing_slos": [
+          {
+            "name": "checkout-success",
+            "display_name": "Checkout Success Rate",
+            "project": "payments",
+            "service": "checkout-service",
+            "indicator_kind": "Ratio",
+            "metric_source_kind": "Direct",
+            "objectives": [
+              {
+                "name": "good",
+                "target": 0.999,
+                "time_window": "28d rolling"
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "stability_cases": [

@@ -10,10 +10,12 @@ Runnable reference for the SLO Review Board Agent.
 | Path | Purpose |
 |------|---------|
 | `agent.py` | ADK agent definition (tools, skills, structured verdict schema) |
+| `nobl9_client.py` | Read-only Nobl9 REST client (token cache, Objects API, Status API v2) |
 | `prompts/system.md` | Deployed system instruction (extracted from `docs/02-master-system-prompt.md`) |
 | `prompts/vertical-*.md` | Optional prepends for `gxp`, `fedramp`, `pci` |
 | `skills/*/SKILL.md` | ADK SkillToolset bodies |
 | `evals/evals.json` | Golden eval set for regression testing |
+| `tests/` | Mocked unit tests (Nobl9 catalog; no live org calls) |
 
 ## Prerequisites
 
@@ -22,7 +24,8 @@ Runnable reference for the SLO Review Board Agent.
   - `GOOGLE_CLOUD_PROJECT`
   - `SLO_REVIEW_DOCS_DATASTORE`
   - `SLO_REVIEW_SRE_CORPUS_DATASTORE`
-  - Optional: `DEPLOYMENT_TIER`, `DEPLOYMENT_VERTICAL`
+  - Optional: `DEPLOYMENT_VERTICAL`
+  - Optional Nobl9 catalog: `NOBL9_CLIENT_ID`, `NOBL9_CLIENT_SECRET`, `NOBL9_ORGANIZATION`, `NOBL9_URL`, `NOBL9_PROJECT`
 
 ## Local smoke test
 
@@ -57,3 +60,9 @@ Adjust module path to match your packaging if you wrap this in a `slo_review_age
 ```
 
 Wire `evals/run_evals.py` when you add CI — `docs/05-evaluation-and-guardrails.md` and `specs/001-slo-review-board-agent/tasks.md` describe the expected gate.
+
+Nobl9 catalog unit tests (mocked; no live API):
+
+```bash
+python -m unittest discover -s implementation/tests -v
+```

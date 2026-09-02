@@ -148,9 +148,18 @@ When the user references a GCS path or uploaded documents, query the review-docu
 data store. When you need to cite the SRE Book or Workbook, query the SRE corpus store.
 ```
 
-### 5e — Nobl9 (optional, enterprise tier)
+### 5e — Nobl9 catalog (optional)
 
-If needed, add an **MCP Server** or **OpenAPI** tool per Studio support in your project. Skip if you are not integrating Nobl9.
+Do **not** add Cursor's Nobl9 MCP or an "enterprise MCP" server. Studio should call the same two read-only GETs the ADK client uses, after a Bearer token from `POST /api/accessToken`.
+
+If you want overlap checks in Preview, add an **OpenAPI** tool (not MCP) against:
+
+1. `GET {NOBL9_URL}/api/v2/objects/v1alpha/slos?project={project}&service={service}` — SLO definitions
+2. `GET {NOBL9_URL}/api/v2/slos?project={project}` — live remaining budget / reliability (best-effort; definitions still count if this fails)
+
+Auth: `POST {NOBL9_URL}/api/accessToken` with `Authorization: Basic base64(clientId:clientSecret)`. Reuse the JWT for about an hour (Nobl9 allows 1 token request / 3 seconds). Send the `Organization` header on Objects API calls.
+
+Skip this tool if you do not have a Nobl9 client ID and secret. Store the secret in Secret Manager — do not paste it into Instructions. The agent must not apply or generate Nobl9 YAML. If the OpenAPI tool errors, continue the review and say catalog was unavailable once.
 
 ---
 
