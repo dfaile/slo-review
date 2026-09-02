@@ -8,7 +8,7 @@ Review agent. Deployable to Vertex AI Agent Engine.
 Architecture:
 - Primary agent: gemini-3.1-pro for principal-SRE reasoning
 - Skills: slo-approval-review (always loaded), sre-principles-citation (conditional)
-- Tools: ingest_documents, search_sre_corpus, (optional) nobl9_catalog
+- Tools: ingest_documents, search_sre_corpus, (optional) nobl9_catalog_lookup
 
 Deploy:
     adk deploy agent_engine --agent slo_review_agent.agent --region us-central1
@@ -33,6 +33,8 @@ from google.cloud import discoveryengine_v1
 from google.cloud import storage
 from pydantic import BaseModel, Field
 
+from nobl9_client import client_from_env, credentials_configured, lookup_catalog
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -40,9 +42,11 @@ from pydantic import BaseModel, Field
 
 PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
 REGION = os.environ.get("GOOGLE_CLOUD_REGION", "us-central1")
-# DEPLOYMENT_* is canonical; CUSTOMER_* is accepted so older env files still work.
-DEPLOYMENT_TIER = os.environ.get("DEPLOYMENT_TIER") or os.environ.get("CUSTOMER_TIER", "standard")
+# DEPLOYMENT_VERTICAL is canonical; CUSTOMER_VERTICAL is accepted so older env files still work.
 VERTICAL = os.environ.get("DEPLOYMENT_VERTICAL") or os.environ.get("CUSTOMER_VERTICAL", "horizontal")
+
+# Reused across tool calls in this process so the JWT is fetched once per hour.
+_nobl9_client = None
 
 PROMPT_DIR = Path(__file__).parent / "prompts"
 SKILLS_DIR = Path(__file__).parent / "skills"
@@ -162,33 +166,26 @@ def search_sre_corpus(query: str, max_results: int = 3) -> dict[str, Any]:
     return {"passages": passages, "query": query}
 
 
-def nobl9_catalog_lookup(service_name: str) -> dict[str, Any]:
-    """Fetch existing Nobl9 SLOs for a given service.
+def nobl9_catalog_lookup(service_name: str, project: str = "") -> dict[str, Any]:
+    """Look up SLOs already deployed in Nobl9 for overlap with this proposal.
 
-    Optional integration. Registered only when DEPLOYMENT_TIER=enterprise.
-    This reference implementation returns a stub — wire the Nobl9 SDK or REST
-    API before using it in production.
+    Call when Nobl9 is mentioned, when the user asks about overlap or
+    already-deployed SLOs, or when a proposal looks like it might duplicate
+    an existing portfolio. Read-only — does not apply or generate YAML.
 
     Args:
-        service_name: Logical service name as used in Nobl9 projects.
+        service_name: Nobl9 service name from the discovery document.
+        project: Nobl9 project. Falls back to NOBL9_PROJECT if omitted.
 
     Returns:
-        dict with "existing_slos" list, or an error payload if unset/unwired.
+        Compact catalog payload: existing_slos (name, targets, optional live
+        reliability / remaining budget). On failure, {error, existing_slos: []}
+        so the review can continue without inventing catalog.
     """
-    if DEPLOYMENT_TIER != "enterprise":
-        return {"error": "nobl9_catalog tool is registered only when DEPLOYMENT_TIER=enterprise."}
-
-    if not os.environ.get("NOBL9_API_KEY"):
-        return {"error": "NOBL9_API_KEY is not set."}
-
-    return {
-        "error": (
-            "Nobl9 catalog lookup is a stub in this reference implementation. "
-            "Wire the Nobl9 SDK or REST API here before enabling it."
-        ),
-        "service_name": service_name,
-        "existing_slos": [],
-    }
+    global _nobl9_client
+    if _nobl9_client is None:
+        _nobl9_client = client_from_env()
+    return lookup_catalog(service_name, project or None, client=_nobl9_client)
 
 
 # ---------------------------------------------------------------------------
@@ -248,14 +245,16 @@ def _build_system_instruction() -> str:
 # The agent
 # ---------------------------------------------------------------------------
 
+def _tool_functions() -> list:
+    """Callables to wrap as FunctionTools. Catalog lookup is credential-gated."""
+    functions = [ingest_documents, search_sre_corpus]
+    if credentials_configured():
+        functions.append(nobl9_catalog_lookup)
+    return functions
+
+
 def _build_tools() -> list[FunctionTool]:
-    tools = [
-        FunctionTool(ingest_documents),
-        FunctionTool(search_sre_corpus),
-    ]
-    if DEPLOYMENT_TIER == "enterprise":
-        tools.append(FunctionTool(nobl9_catalog_lookup))
-    return tools
+    return [FunctionTool(fn) for fn in _tool_functions()]
 
 
 agent = Agent(
@@ -288,9 +287,9 @@ if __name__ == "__main__":
     # This block exists to make the file directly runnable for smoke testing.
     print("SLO Review Board Agent loaded.")
     print(f"  Model: {agent.model}")
-    print(f"  Tier: {DEPLOYMENT_TIER}")
     print(f"  Vertical: {VERTICAL}")
-    print(f"  Tools: {[t.name for t in agent.tools]}")
+    print(f"  Nobl9 catalog: {'enabled' if credentials_configured() else 'disabled (no client credentials)'}")
+    print(f"  Tools: {[getattr(t, 'name', None) for t in agent.tools]}")
     print(f"  Skills: {[s.frontmatter.name for s in skill_toolset.skills]}")
     print()
     print("To run interactively: `adk web .` from this directory.")

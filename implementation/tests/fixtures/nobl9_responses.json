@@ -1,0 +1,182 @@
+{
+  "objects_checkout": [
+    {
+      "apiVersion": "n9/v1alpha",
+      "kind": "SLO",
+      "metadata": {
+        "name": "checkout-success",
+        "displayName": "Checkout Success Rate",
+        "project": "payments"
+      },
+      "spec": {
+        "description": "Successful POST /checkout.",
+        "service": "checkout-service",
+        "indicator": {
+          "metricSource": {
+            "name": "datadog-prod",
+            "project": "default",
+            "kind": "Direct"
+          }
+        },
+        "budgetingMethod": "Occurrences",
+        "objectives": [
+          {
+            "name": "good",
+            "displayName": "Good",
+            "target": 0.999,
+            "countMetrics": {
+              "incremental": true
+            }
+          }
+        ],
+        "timeWindows": [
+          {
+            "unit": "Day",
+            "count": 28,
+            "isRolling": true
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "n9/v1alpha",
+      "kind": "SLO",
+      "metadata": {
+        "name": "checkout-latency",
+        "displayName": "Checkout Latency",
+        "project": "payments"
+      },
+      "spec": {
+        "service": "checkout-service",
+        "indicator": {
+          "metricSource": {
+            "name": "datadog-prod",
+            "kind": "Direct"
+          },
+          "rawMetric": {
+            "datadog": {
+              "query": "p95:trace.http.request{resource:post_/checkout}"
+            }
+          }
+        },
+        "objectives": [
+          {
+            "name": "p95",
+            "target": 0.95
+          }
+        ],
+        "timeWindows": [
+          {
+            "unit": "Day",
+            "count": 28,
+            "isRolling": true
+          }
+        ]
+      }
+    }
+  ],
+  "objects_project_wide": [
+    {
+      "apiVersion": "n9/v1alpha",
+      "kind": "SLO",
+      "metadata": {
+        "name": "user-service-availability",
+        "displayName": "User Service Availability",
+        "project": "payments"
+      },
+      "spec": {
+        "service": "user-service",
+        "indicator": {
+          "metricSource": {
+            "name": "prometheus-prod",
+            "kind": "Agent"
+          }
+        },
+        "objectives": [
+          {
+            "name": "good",
+            "target": 0.9995,
+            "countMetrics": {
+              "incremental": true
+            }
+          }
+        ],
+        "timeWindows": [
+          {
+            "unit": "Day",
+            "count": 28,
+            "isRolling": true
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "n9/v1alpha",
+      "kind": "SLO",
+      "metadata": {
+        "name": "checkout-success",
+        "displayName": "Checkout Success Rate",
+        "project": "payments"
+      },
+      "spec": {
+        "service": "checkout-service",
+        "indicator": {
+          "metricSource": {
+            "name": "datadog-prod",
+            "kind": "Direct"
+          }
+        },
+        "objectives": [
+          {
+            "name": "good",
+            "target": 0.999,
+            "countMetrics": {
+              "incremental": true
+            }
+          }
+        ],
+        "timeWindows": [
+          {
+            "unit": "Day",
+            "count": 28,
+            "isRolling": true
+          }
+        ]
+      }
+    }
+  ],
+  "status_checkout": {
+    "data": [
+      {
+        "name": "checkout-success",
+        "project": "payments",
+        "objectives": [
+          {
+            "name": "good",
+            "reliability": 0.9987,
+            "errorBudgetRemaining": 0.42,
+            "errorBudget": {
+              "remaining": 0.42,
+              "status": "Ok"
+            }
+          }
+        ]
+      },
+      {
+        "name": "checkout-latency",
+        "project": "payments",
+        "objectives": [
+          {
+            "name": "p95",
+            "reliability": 0.97,
+            "errorBudgetRemaining": 0.11,
+            "errorBudget": {
+              "remaining": 0.11,
+              "status": "AtRisk"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

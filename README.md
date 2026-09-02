@@ -69,7 +69,7 @@ Preview reviews (local coding agent) are not audit records. Engine-mode reviews 
 
 ## Status
 
-Shipped as a complete **prompt + skills + eval-case** package with a runnable ADK reference agent. Not yet shipped: a CI eval runner (`docs/05` specifies it), packaged Python tests, and a live Nobl9 SDK integration (the tool is a stub behind `DEPLOYMENT_TIER=enterprise`).
+Shipped as a complete **prompt + skills + eval-case** package with a runnable ADK reference agent and an optional read-only Nobl9 catalog lookup (registered when `NOBL9_CLIENT_ID` and `NOBL9_CLIENT_SECRET` are set). Not yet shipped: a CI eval runner (`docs/05` specifies it).
 
 ## License
 
