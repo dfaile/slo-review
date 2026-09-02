@@ -1,0 +1,16 @@
+# SLO Review Board Agent — versions
+
+Bump `package_version` on tagged releases. Keep component versions in sync in the release notes.
+
+package_version=1.0.0
+release_date=2026-06-03
+release_codename=reference
+
+constitution_version=1.0.0
+spec_feature_id=001-slo-review-board-agent
+evals_version=1.0.0
+speckit_extension_version=0.1.0
+spec_kit_min_version=0.9.0
+
+prompt_version=1.0.0
+implementation_agent=reference

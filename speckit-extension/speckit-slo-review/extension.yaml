@@ -1,0 +1,78 @@
+name: speckit-slo-review
+version: 0.1.0
+description: >
+  Adds /speckit.slo-review as a slash command that renders a principal-SRE
+  approval review of an SLO Implementation Guide against an SLO Discovery
+  document. Two operating modes: inline preview (the local coding agent
+  performs the review using the bundled system prompt — free, instant) and
+  engine mode (calls a deployed Vertex AI Agent Engine endpoint for an
+  auditable, attributable review).
+
+author:
+  name: SLO Review Board Agent
+  url: https://github.com/dfaile/slo-review
+
+license: Apache-2.0
+spec_kit_min_version: "0.9.0"
+
+# Commands this extension contributes. Spec Kit will install these into the
+# agent-specific command directories at extension-add time (e.g.,
+# .claude/commands/ for Claude Code, .github/prompts/ for Copilot).
+commands:
+  - id: slo-review
+    name: "/speckit.slo-review"
+    description: "Render a principal-SRE approval review of an SLO portfolio."
+    template: templates/commands/slo-review.md
+    skill_template: templates/commands/slo-review.skill.md  # for skills-mode agents
+    inputs:
+      - name: discovery
+        description: "Path or GCS URI to the SLO Discovery document"
+        required: true
+      - name: implementation_guide
+        description: "Path or GCS URI to the SLO Implementation Guide"
+        required: true
+      - name: mode
+        description: "preview (local, default) | engine (calls Agent Engine endpoint)"
+        required: false
+        default: preview
+      - name: vertical
+        description: "horizontal (default) | gxp | fedramp | pci"
+        required: false
+        default: horizontal
+
+# Templates this extension contributes. Templates are resolved at runtime
+# from `.specify/extensions/templates/` after install.
+templates:
+  - id: slo-review-paper
+    description: "Output template for the approval review paper."
+    path: templates/slo-review-paper.md
+
+# Configuration variables this extension reads from the project's
+# .specify/config or environment.
+configuration:
+  - name: SLO_REVIEW_AGENT_ENGINE_RESOURCE
+    description: >
+      Full Vertex AI Agent Engine resource name for engine-mode reviews.
+      Format: projects/PROJECT/locations/REGION/reasoningEngines/ENGINE_ID
+      Required only when running in engine mode.
+    required: false
+  - name: SLO_REVIEW_DEFAULT_MODE
+    description: "Default mode if not specified at invocation time."
+    default: preview
+    required: false
+
+# Agent integrations this extension supports.
+integrations:
+  - copilot
+  - claude
+  - gemini
+  - codex
+  - cursor
+
+# Tags for Spec Kit extension catalog discoverability.
+tags:
+  - sre
+  - reliability
+  - slo
+  - review
+  - quality-gate

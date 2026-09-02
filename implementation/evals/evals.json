@@ -1,0 +1,125 @@
+{
+  "_metadata": {
+    "description": "Golden eval set for the SLO Review Board Agent. Each case is a known-input → known-correct-verdict pair. Cases are compact on purpose (real docs are longer); the verdict-determining signal must be present, not every operational detail. All services are fictional.",
+    "version": "1.0.0",
+    "case_count": 6,
+    "verdict_distribution": {
+      "Approved": 1,
+      "Approved with Revisions": 3,
+      "Rejected": 2
+    }
+  },
+  "cases": [
+    {
+      "id": "case-01-approved-clean-checkout",
+      "description": "Well-designed portfolio for a checkout service. Should pass all four tests.",
+      "discovery": "Service: checkout-service. Owner: Payments Platform team. Consumers: ~50M monthly active users via web and mobile apps. User journey: user clicks checkout, fills payment, receives confirmation. Hard dependencies: Stripe API (99.99% per Stripe SLA), internal user-service (99.95% measured). Incident history: 3 outages in last 12 months — 2 caused by Stripe degradation, 1 by user-service auth bug. Business has a public SLA: 99.9% checkout availability. Observability: Datadog metrics + traces.",
+      "implementation_guide": "Three proposed SLOs:\n1. Checkout success rate — SLI: HTTP 2xx on POST /checkout / total POST /checkout. Target: 99.9% over 28 days. Basis: matches public SLA.\n2. Checkout latency — SLI: P95 latency on POST /checkout. Target: 95% of requests < 3s over 28 days. Basis: observed P95 over last 90 days has been 2.4s; 3s gives 25% headroom.\n3. Payment confirmation latency — SLI: P95 time from checkout submit to confirmation email sent. Target: 95% < 60s over 28 days. Basis: customer NPS drops measurably when confirmations exceed 60s (data from CX team Q3 survey).\nAll three use Datadog as the tool of record. Budgeting: Occurrences method.",
+      "golden_verdict": "Approved",
+      "required_findings": [
+        "Stripe",
+        "user-service"
+      ],
+      "prohibited_findings": [
+        "CPU",
+        "memory percent",
+        "vibe"
+      ]
+    },
+    {
+      "id": "case-02-approved-with-revisions-mostly-good",
+      "description": "Solid portfolio but one SLO is cause-based and should be demoted. Target on another lacks basis.",
+      "discovery": "Service: notification-service. Owner: Platform team. Consumers: 200 internal microservices that publish notifications to be delivered via email, SMS, push. Hard dependencies: SendGrid (99.95% SLA), Twilio (99.95% SLA), Firebase Cloud Messaging (no published SLO). Incidents: 5 in past year — 3 from SendGrid throttling, 2 from internal Redis queue saturation.",
+      "implementation_guide": "Four proposed SLOs:\n1. Email delivery success — SLI: SendGrid delivered/total emails. Target: 99.5% over 28 days. Basis: matches SendGrid SLA floor.\n2. SMS delivery success — SLI: Twilio delivered/total SMS. Target: 99.5% over 28 days. Basis: matches Twilio SLA floor.\n3. Push delivery success — SLI: FCM ack rate. Target: 99.9% over 28 days. Basis: 99.9% is industry standard for push.\n4. Redis queue health — SLI: Redis memory usage < 80%. Target: 99% of samples over 28 days. Basis: prevents the 2 outages we had last year.",
+      "golden_verdict": "Approved with Revisions",
+      "required_findings": [
+        "cause",
+        "99.9%",
+        "Firebase",
+        "Redis"
+      ],
+      "prohibited_findings": []
+    },
+    {
+      "id": "case-03-rejected-majority-cause-based",
+      "description": "Five out of seven SLOs are cause-based. Structural failure — requires rescope, not revision.",
+      "discovery": "Service: order-fulfillment-service. Consumers: warehouse staff at 12 distribution centers. Critical user journey: scan barcode, system tells worker which bin, worker picks item, system confirms. Hard dependencies: WMS-DB (PostgreSQL, no documented SLO), internal auth (99.9%), barcode scanner gateway. Incident history: heavy — 14 incidents in past 6 months, mostly during peak shifts.",
+      "implementation_guide": "Seven proposed SLOs:\n1. CPU utilization < 75% — Target: 99% of samples. Basis: stops overload incidents.\n2. Memory utilization < 80% — Target: 99% of samples. Basis: prevents OOM.\n3. Disk utilization < 90% — Target: 99% of samples. Basis: storage discipline.\n4. Database connection pool < 90% — Target: 99% of samples. Basis: stops connection exhaustion.\n5. Service process running — Target: 99.9%. Basis: prevents downtime.\n6. Barcode scan success — SLI: scans returning a bin assignment / total scans. Target: 99.9% over 28 days. Basis: '99.9% is the standard.'\n7. End-to-end pick latency — SLI: P95 time from scan to bin assignment. Target: 95% < 2s. Basis: workers have stated 2s is the workflow threshold.",
+      "golden_verdict": "Rejected",
+      "required_findings": [
+        "cause",
+        "five",
+        "rescope",
+        "barcode scan",
+        "pick latency"
+      ],
+      "prohibited_findings": [
+        "deploy as written"
+      ]
+    },
+    {
+      "id": "case-04-rejected-internal-contradictions",
+      "description": "Executive summary commits to 3 SLOs; body defines 8. One SLO is duplicated with different targets. Structural disqualification.",
+      "discovery": "Service: user-profile-service. Consumers: mobile app, web app, partner APIs. Hard dependencies: identity-provider (99.95%), profile-db (99.9%). Recent incidents: 4 in 12 months, 3 from identity-provider.",
+      "implementation_guide": "Executive summary: 'We propose three SLOs covering availability, latency, and data freshness.'\n\nBody:\n1. API availability — SLI: HTTP 2xx/total. Target: 99.9%.\n2. API latency — SLI: P95 < 500ms. Target: 95% under 500ms.\n3. Data freshness — SLI: max age of cache entry. Target: < 60s.\n4. Authentication success rate — SLI: identity-provider verifications passing/total. Target: 99.95%.\n5. Profile read latency — SLI: P95 read latency. Target: 95% < 200ms.\n6. Profile write latency — SLI: P95 write latency. Target: 95% < 500ms.\n7. Cache hit rate — SLI: cache hits/total reads. Target: 90%.\n8. API availability — SLI: HTTP 2xx/total. Target: 99.99%.",
+      "golden_verdict": "Rejected",
+      "required_findings": [
+        "executive summary",
+        "duplicate",
+        "draft",
+        "contradiction"
+      ],
+      "prohibited_findings": []
+    },
+    {
+      "id": "case-05-approved-with-revisions-missing-latency",
+      "description": "Availability portfolio is solid but no latency SLO despite discovery flagging latency complaints.",
+      "discovery": "Service: search-service. Consumers: e-commerce shoppers, ~20M MAU. Key user journey: user types query, sees results. Pain point named in discovery: 'shoppers complain results take too long during peak traffic — Black Friday produced 6-second average response, NPS dropped 15 points that week.' Hard dependencies: Elasticsearch cluster (no documented SLO, internal team).",
+      "implementation_guide": "Two proposed SLOs:\n1. Search API availability — SLI: 2xx/total on GET /search. Target: 99.95% over 28 days. Basis: 12-month observed availability is 99.97%.\n2. Search result freshness — SLI: max age of index update. Target: < 5 min over 28 days. Basis: business requirement for new-listing visibility.",
+      "golden_verdict": "Approved with Revisions",
+      "required_findings": [
+        "latency",
+        "Black Friday",
+        "Elasticsearch"
+      ],
+      "prohibited_findings": []
+    },
+    {
+      "id": "case-06-approved-with-revisions-target-no-basis",
+      "description": "Single SLO portfolio. Target is plausible but the document offers no basis for it.",
+      "discovery": "Service: webhook-delivery. Consumers: 300 enterprise customers integrating outbound webhooks. Hard dependencies: customer-controlled endpoints (no SLO), internal retry queue. No stated business SLA. Incident history: 'occasional customer complaints about webhook lag, no formal SLA agreement in place.'",
+      "implementation_guide": "One proposed SLO:\n1. Webhook delivery success — SLI: webhooks delivered within 60s / total webhooks. Target: 99.5% over 28 days. Basis: 'industry standard for webhook delivery.'",
+      "golden_verdict": "Approved with Revisions",
+      "required_findings": [
+        "industry standard",
+        "basis",
+        "convention"
+      ],
+      "prohibited_findings": []
+    }
+  ],
+  "stability_cases": [
+    {
+      "id": "stability-01-rejected-under-pressure",
+      "description": "Verify the agent holds a Rejected verdict under pressure follow-ups.",
+      "initial_request": "Review these SLOs. [paste contents of case-03-rejected-majority-cause-based]",
+      "expected_initial_verdict": "Rejected"
+    },
+    {
+      "id": "stability-02-revision-under-pressure",
+      "description": "Verify the agent holds Approved-with-Revisions under pressure follow-ups.",
+      "initial_request": "Review these SLOs. [paste contents of case-02-approved-with-revisions-mostly-good]",
+      "expected_initial_verdict": "Approved with Revisions"
+    }
+  ],
+  "new_information_cases": [
+    {
+      "id": "newinfo-01-dependency-slo-revealed",
+      "description": "Initial review notes FCM has no published SLO. User provides the missing data on follow-up.",
+      "initial_request": "Review these SLOs. [paste contents of case-02]",
+      "new_information": "Update: we just confirmed with Google that FCM operates at 99.95% for our region. Please re-render with that information.",
+      "expected_verdict_after_new_info": "Approved with Revisions",
+      "expected_findings_change": "Push delivery dependency ceiling concern should be resolved; if other revisions remain, verdict stays Approved with Revisions."
+    }
+  ]
+}
